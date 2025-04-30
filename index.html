@@ -4,7 +4,8 @@
 <head>
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	<title>GENULATE: Outputs</title>
+	<title>GENULATE: Outputs + Granular Synth</title>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.36/Tone.min.js"></script>
 	<style>
 		body {
 			font-family: Arial, sans-serif;
@@ -30,7 +31,6 @@
 
 		.output-container img {
 			width: 300px;
-			/* Increased image size */
 			height: auto;
 			margin-right: 15px;
 			border: 1px solid #ccc;
@@ -40,11 +40,36 @@
 		button {
 			margin-right: 8px;
 		}
+
+		.wrapper {
+			display: flex;
+			align-items: flex-start;
+			font-family: sans-serif;
+			gap: 40px;
+			margin-top: 40px;
+		}
+
+		.controls {
+			min-width: 260px;
+			display: flex;
+			flex-direction: column;
+			gap: 10px;
+		}
+
+		.controls label {
+			font-size: 13px;
+		}
+
+		.controls input[type="range"],
+		select {
+			width: 100%;
+		}
 	</style>
 </head>
 
 <body>
 	<h1>GENULATE: Outputs</h1>
+	<p>Here are the outputs of the GENULATE tool:</p>
 
 	<!-- Input Section -->
 	<div class="output-section" id="input-section">
@@ -62,7 +87,139 @@
 		</div>
 	</div>
 
+	<!-- Granular Synth Section -->
+	<div class="wrapper">
+		<div class="controls">
+			<h3>Granular Synth</h3>
+			<select id="fileSelect">
+				<option disabled selected>Select an conditioned file</option>
+				<option value="1">1.wav</option>
+				<option value="2">2.wav</option>
+				<option value="3">3.wav</option>
+				<option value="4">4.wav</option>
+				<option value="5">5.wav</option>
+			</select>
+
+			<button id="toggle" disabled>▶ Start</button>
+			<p id="status">Waiting for file...</p>
+
+			<label>Grain Size
+				<input id="grainSize" type="range" min="0.01" max="1.0" step="0.01" value="0.25">
+			</label>
+
+			<label>Overlap
+				<input id="overlap" type="range" min="0.01" max="1.0" step="0.01" value="0.1">
+			</label>
+
+			<label>Reverb Wet
+				<input id="reverbWet" type="range" min="0.0" max="1.0" step="0.01" value="0.7">
+			</label>
+
+			<label>Delay Time (s)
+				<input id="delayTime" type="range" min="0.0" max="1.0" step="0.01" value="0.25">
+			</label>
+
+			<label>Delay Feedback
+				<input id="delayFeedback" type="range" min="0.0" max="0.9" step="0.01" value="0.3">
+			</label>
+		</div>
+
+		<div>
+			This is the same system built into the notebook. You may select a file and play with it to see what the
+			output sounds like
+			Use the controls to adjust the grain size, overlap, reverb wetness, and delay settings. Select a file
+			from the dropdown to load it into the granular synth.</p>
+		</div>
+	</div>
+
 	<script>
+		let grainPlayer, reverb, delay;
+		let isPlaying = false;
+
+		const toggleButton = document.getElementById("toggle");
+		const status = document.getElementById("status");
+		const fileSelect = document.getElementById("fileSelect");
+
+		const grainSizeSlider = document.getElementById("grainSize");
+		const overlapSlider = document.getElementById("overlap");
+		const reverbWetSlider = document.getElementById("reverbWet");
+		const delayTimeSlider = document.getElementById("delayTime");
+		const delayFeedbackSlider = document.getElementById("delayFeedback");
+
+		fileSelect.addEventListener("change", async (e) => {
+			const index = e.target.value;
+			await loadAndSetup(`assets/conditioned/${index}.wav`);
+		});
+
+		async function loadAndSetup(fileUrl) {
+			status.textContent = "Loading...";
+			toggleButton.disabled = true;
+			isPlaying = false;
+
+			try {
+				const response = await fetch(fileUrl);
+				const arrayBuffer = await response.arrayBuffer();
+				const audioBuffer = await Tone.context.decodeAudioData(arrayBuffer);
+
+				if (grainPlayer) grainPlayer.dispose();
+				if (reverb) reverb.dispose();
+				if (delay) delay.dispose();
+
+				reverb = new Tone.Reverb({ decay: 3, wet: parseFloat(reverbWetSlider.value) }).toDestination();
+				delay = new Tone.FeedbackDelay({
+					delayTime: parseFloat(delayTimeSlider.value),
+					feedback: parseFloat(delayFeedbackSlider.value),
+					wet: 0.5
+				}).connect(reverb);
+
+				grainPlayer = new Tone.GrainPlayer({
+					loop: true,
+					grainSize: parseFloat(grainSizeSlider.value),
+					overlap: parseFloat(overlapSlider.value)
+				});
+
+				grainPlayer.buffer = new Tone.ToneAudioBuffer(audioBuffer);
+				grainPlayer.connect(delay);
+
+				toggleButton.disabled = false;
+				status.textContent = "Ready!";
+			} catch (err) {
+				status.textContent = "Error loading audio.";
+				console.error(err);
+			}
+		}
+
+		toggleButton.addEventListener("click", async () => {
+			await Tone.start();
+			if (!grainPlayer) return;
+
+			if (!isPlaying) {
+				grainPlayer.start();
+				toggleButton.textContent = "⏹ Stop";
+				status.textContent = "Playing...";
+			} else {
+				grainPlayer.stop();
+				toggleButton.textContent = "▶ Start";
+				status.textContent = "Stopped.";
+			}
+			isPlaying = !isPlaying;
+		});
+
+		function updateParams() {
+			if (!grainPlayer) return;
+			grainPlayer.grainSize = parseFloat(grainSizeSlider.value);
+			grainPlayer.overlap = parseFloat(overlapSlider.value);
+			if (reverb) reverb.wet.value = parseFloat(reverbWetSlider.value);
+			if (delay) {
+				delay.delayTime.value = parseFloat(delayTimeSlider.value);
+				delay.feedback.value = parseFloat(delayFeedbackSlider.value);
+			}
+		}
+
+		[grainSizeSlider, overlapSlider, reverbWetSlider, delayTimeSlider, delayFeedbackSlider]
+			.forEach(el => el.addEventListener("input", updateParams));
+
+		// Image + audio loader
 		function createOutputItem(type, index, isInput = false) {
 			const section = document.getElementById(`${type}-section`);
 			const folder = isInput ? 'input' : (type === 'conditional' ? 'conditioned' : 'unconditioned');
@@ -106,10 +263,8 @@
 			audio.currentTime = 0;
 		}
 
-		// Single input file
+		// Populate input and outputs
 		createOutputItem('input', 1, true);
-
-		// Multiple outputs
 		for (let i = 1; i <= 5; i++) {
 			createOutputItem('conditional', i);
 			createOutputItem('unconditional', i);

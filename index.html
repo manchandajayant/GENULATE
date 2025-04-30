@@ -2,22 +2,119 @@
 <html lang="en">
 
 <head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>GENULATE: outputs</title>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>GENULATE: Outputs</title>
+	<style>
+		body {
+			font-family: Arial, sans-serif;
+			padding: 20px;
+		}
+
+		.columns {
+			display: flex;
+			gap: 40px;
+			flex-wrap: wrap;
+		}
+
+		.output-section {
+			flex: 1;
+			min-width: 300px;
+		}
+
+		.output-container {
+			display: flex;
+			align-items: center;
+			margin-bottom: 20px;
+		}
+
+		.output-container img {
+			width: 300px;
+			/* Increased image size */
+			height: auto;
+			margin-right: 15px;
+			border: 1px solid #ccc;
+			border-radius: 8px;
+		}
+
+		button {
+			margin-right: 8px;
+		}
+	</style>
 </head>
 
 <body>
+	<h1>GENULATE: Outputs</h1>
 
-	<div>
-		<h1>GENULATE: outputs</h1>
-		<p>Here are the outputs of the GENULATE tool:</p>
-		<ul>
-			<li><a href="output_1.txt">Examplwasdase 1</a></li>
-			<li><a href="Example_2.txt">Examasdadaple 2</a></li>
-			<li><a href="Example_3.txt">Examasadsadple 3</a></li>
-			<!-- Add more links as needed -->
-		</ul>
+	<!-- Input Section -->
+	<div class="output-section" id="input-section">
+		<h2>Input</h2>
+	</div>
+
+	<!-- Output Sections -->
+	<div class="columns">
+		<div class="output-section" id="conditional-section">
+			<h2>Conditional Outputs</h2>
+		</div>
+
+		<div class="output-section" id="unconditional-section">
+			<h2>Unconditional Outputs</h2>
+		</div>
+	</div>
+
+	<script>
+		function createOutputItem(type, index, isInput = false) {
+			const section = document.getElementById(`${type}-section`);
+			const folder = isInput ? 'input' : (type === 'conditional' ? 'conditioned' : 'unconditioned');
+
+			const container = document.createElement('div');
+			container.className = 'output-container';
+
+			const img = document.createElement('img');
+			img.src = `assets/${folder}/${index}.png`;
+			img.alt = `${folder} image ${index}`;
+			container.appendChild(img);
+
+			const controlsDiv = document.createElement('div');
+
+			const audio = document.createElement('audio');
+			audio.id = `audio-${folder}-${index}`;
+			audio.src = `assets/${folder}/${index}.wav`;
+			controlsDiv.appendChild(audio);
+
+			const playBtn = document.createElement('button');
+			playBtn.innerText = 'Play';
+			playBtn.onclick = () => playAudio(audio.id);
+			controlsDiv.appendChild(playBtn);
+
+			const stopBtn = document.createElement('button');
+			stopBtn.innerText = 'Stop';
+			stopBtn.onclick = () => stopAudio(audio.id);
+			controlsDiv.appendChild(stopBtn);
+
+			container.appendChild(controlsDiv);
+			section.appendChild(container);
+		}
+
+		function playAudio(id) {
+			document.getElementById(id).play();
+		}
+
+		function stopAudio(id) {
+			const audio = document.getElementById(id);
+			audio.pause();
+			audio.currentTime = 0;
+		}
+
+		// Single input file
+		createOutputItem('input', 1, true);
+
+		// Multiple outputs
+		for (let i = 1; i <= 5; i++) {
+			createOutputItem('conditional', i);
+			createOutputItem('unconditional', i);
+		}
+	</script>
 </body>
 
 </html>
